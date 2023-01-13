@@ -1,4 +1,4 @@
-#include "src/jujimeizuo.h"
+#include "../server/src/jujimeizuo.h"
 #include <unistd.h>
 
 jujimeizuo::Logger::ptr g_logger = JUJIMEIZUO_LOG_ROOT();

@@ -1,7 +1,5 @@
-#include <iostream>
-#include <thread>
-#include "../src/log.h"
-#include "../src/util.h"
+#include "../server/src/jujimeizuo.h"
+#include "iostream"
 
 int main(int argc, char** argv) {
     jujimeizuo::Logger::ptr logger(new jujimeizuo::Logger);

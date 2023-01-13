@@ -1,6 +1,4 @@
-#include "../src/config.h"
-#include "../src/log.h"
-#include <yaml-cpp/yaml.h>
+#include "../server/src/jujimeizuo.h"
 #include <iostream>
 
 jujimeizuo::ConfigVar<int>::ptr g_int_value_config =
@@ -55,7 +53,7 @@ void print_yaml(const YAML::Node node, int level) {
 
 
 void test_yaml() {
-	YAML::Node root = YAML::LoadFile("/root/WebServer/bin/conf/log.yml");
+	YAML::Node root = YAML::LoadFile("/root/JUHPS/testlib/bin/conf/log.yml");
 	print_yaml(root, 0);
 
 	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << root.Scalar();
@@ -91,7 +89,7 @@ void test_config() {
 	XX_M(g_str_int_map_value_config, str_int_map, before);
 	XX_M(g_str_int_unordered_map_value_config, str_int_unordered_map, before);
 
-	YAML::Node root = YAML::LoadFile("/root/WebServer/bin/conf/test.yml");
+	YAML::Node root = YAML::LoadFile("/root/JUHPS/testlib/bin/conf/log.yml");
     jujimeizuo::Config::LoadFromYaml(root);
 	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "after: " << g_int_value_config -> getValue();
 	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "after: " << g_float_value_config -> toString();
@@ -187,7 +185,7 @@ void test_class() {
 	XX_PM(g_person_map, "class.map before");
 	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "before: " << g_person_vec_map -> toString();
 
-	YAML::Node root = YAML::LoadFile("/root/WebServer/bin/conf/test.yml");
+	YAML::Node root = YAML::LoadFile("/root/JUHPS/testlib/bin/conf/log.yml");
 	jujimeizuo::Config::LoadFromYaml(root);
 	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "after: " << g_person -> getValue().toString() << " - " << g_person -> toString();
 	XX_PM(g_person_map, "class.map after");
@@ -198,7 +196,7 @@ void test_log() {
     static jujimeizuo::Logger::ptr system_log = JUJIMEIZUO_LOG_NAME("system");
     JUJIMEIZUO_LOG_INFO(system_log) << "hello system" << std::endl;
     std::cout << jujimeizuo::LoggerMgr::GetInstance() -> toYamlString() << std::endl;
-    YAML::Node root = YAML::LoadFile("/root/WebServer/bin/conf/log.yml");
+    YAML::Node root = YAML::LoadFile("/root/JUHPS/testlib/bin/conf/log.yml");
     jujimeizuo::Config::LoadFromYaml(root);
     std::cout << "====================================" << std::endl;
     std::cout << jujimeizuo::LoggerMgr::GetInstance() -> toYamlString() << std::endl;
