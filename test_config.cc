@@ -213,5 +213,12 @@ int main(int argc, char** argv) {
 	// test_config();
 	// test_class();
     test_log();
+
+    jujimeizuo::Config::Visit([](jujimeizuo::ConfigVarBase::ptr var) {
+        JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "name=" << var->getName()
+                    << " description=" << var->getDescription()
+                    << " typename=" << var->getTypename()
+                    << " value=" << var->toString();
+    });
     return 0;
 }
