@@ -9,10 +9,10 @@
 
 static jujimeizuo::Logger::ptr g_logger = JUJIMEIZUO_LOG_ROOT();
 
-int sock;
+int sock = 0;
 
 void test_fiber() {
-    JUJIMEIZUO_LOG_INFO(g_logger) << "test_fiber";
+    JUJIMEIZUO_LOG_INFO(g_logger) << "test_fiber sock=" << sock;
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     fcntl(sock, F_SETFL, O_NONBLOCK);
@@ -47,8 +47,22 @@ void test1() {
     iom.schedule(&test_fiber);
 }
 
+jujimeizuo::Timer::ptr s_timer;
+void test_timer() {
+    jujimeizuo::IOManager iom(2);
+    s_timer = iom.addTimer(1000, [](){
+        static int i = 0;
+        JUJIMEIZUO_LOG_INFO(g_logger) << "hello timer i=" << i;
+        if (++i == 5) {
+            // s_timer->cancel();
+            s_timer->reset(2000, true);
+        }
+    }, true);
+}
+
 int main(int argc, char const *argv[]) {
-    test1();
+    // test1();
+    test_timer();
     return 0;
 }
 
