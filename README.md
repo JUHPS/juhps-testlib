@@ -1,3 +1,7 @@
 - test_logger
 - test_config
 - test_thread
+- test_fiber
+- test_util
+- test_iomanager
+- test_hook
