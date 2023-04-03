@@ -5,3 +5,5 @@
 - test_util
 - test_iomanager
 - test_hook
+- test_address
+- test_socket
