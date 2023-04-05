@@ -1,224 +1,186 @@
-#include "../server/src/jujimeizuo.h"
-#include <iostream>
+#include "src/jujimeizuo.h"
 
-jujimeizuo::ConfigVar<int>::ptr g_int_value_config =
-	jujimeizuo::Config::Lookup("system.port", (int)8080, "system port");
+jujimeizuo::Logger::ptr g_logger = JUJIMEIZUO_LOG_ROOT();
 
-jujimeizuo::ConfigVar<float>::ptr g_int_valuex_config =
-	jujimeizuo::Config::Lookup("system.port", (float)8080, "system port");
+jujimeizuo::ConfigVar<int>::ptr g_int = 
+    jujimeizuo::Config::Lookup("global.int", (int)8080, "global int");
 
-jujimeizuo::ConfigVar<float>::ptr g_float_value_config =
-	jujimeizuo::Config::Lookup("system.value", (float)10.2f, "system value");
+jujimeizuo::ConfigVar<float>::ptr g_float = 
+    jujimeizuo::Config::Lookup("global.float", (float)10.2f, "global float");
 
-jujimeizuo::ConfigVar<std::vector<int>>::ptr g_int_vec_value_config =
-	jujimeizuo::Config::Lookup("system.int_vec", std::vector<int>{1, 2}, "system int vec");
+// 字符串需显示构造，不能传字符串常量
+jujimeizuo::ConfigVar<std::string>::ptr g_string =
+    jujimeizuo::Config::Lookup("global.string", std::string("helloworld"), "global string");
 
-jujimeizuo::ConfigVar<std::list<int>>::ptr g_int_list_value_config =
-	jujimeizuo::Config::Lookup("system.int_list", std::list<int>{1, 2}, "system int list");
+jujimeizuo::ConfigVar<std::vector<int>>::ptr g_int_vec = 
+    jujimeizuo::Config::Lookup("global.int_vec", std::vector<int>{1, 2, 3}, "global int vec");
 
-jujimeizuo::ConfigVar<std::set<int>>::ptr g_int_set_value_config =
-	jujimeizuo::Config::Lookup("system.int_set", std::set<int>{1, 2}, "system int set");
+jujimeizuo::ConfigVar<std::list<int>>::ptr g_int_list = 
+    jujimeizuo::Config::Lookup("global.int_list", std::list<int>{1, 2, 3}, "global int list");
 
-jujimeizuo::ConfigVar<std::unordered_set<int>>::ptr g_int_unordered_set_value_config =
-	jujimeizuo::Config::Lookup("system.int_unordered_set", std::unordered_set<int>{1, 2}, "system int map");
+jujimeizuo::ConfigVar<std::set<int>>::ptr g_int_set = 
+    jujimeizuo::Config::Lookup("global.int_set", std::set<int>{1, 2, 3}, "global int set");
 
-jujimeizuo::ConfigVar<std::map<std::string, int> >::ptr g_str_int_map_value_config =
-	jujimeizuo::Config::Lookup("system.str_int_map", std::map<std::string, int>{{"k", 2}}, "system str int map");
+jujimeizuo::ConfigVar<std::unordered_set<int>>::ptr g_int_unordered_set = 
+    jujimeizuo::Config::Lookup("global.int_unordered_set", std::unordered_set<int>{1, 2, 3}, "global int unordered_set");
 
-jujimeizuo::ConfigVar<std::unordered_map<std::string, int> >::ptr g_str_int_unordered_map_value_config =
-	jujimeizuo::Config::Lookup("system.str_int_unordered_map", std::unordered_map<std::string, int>{{"k", 2}}, "system str int unordered_map");
+jujimeizuo::ConfigVar<std::map<std::string, int>>::ptr g_map_string2int = 
+    jujimeizuo::Config::Lookup("global.map_string2int", std::map<std::string, int>{{"key1", 1}, {"key2", 2}}, "global map string2int");
 
+jujimeizuo::ConfigVar<std::unordered_map<std::string, int>>::ptr g_unordered_map_string2int = 
+    jujimeizuo::Config::Lookup("global.unordered_map_string2int", std::unordered_map<std::string, int>{{"key1", 1}, {"key2", 2}}, "global unordered_map string2int");
 
-void print_yaml(const YAML::Node node, int level) {
-	if (node.IsScalar()) {
-		JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << std::string(level * 4, ' ')
-			<< node.Scalar() << " - " << node.Type() << " - " << level;
-	} else if (node.IsNull()) {
-		JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << std::string(level * 4, ' ')
-			<< "NULL - " << node.Type() << " - " << level;
-	} else if (node.IsMap()) {
-		for (auto it = node.begin(); it != node.end(); ++it) {
-			JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << std::string(level * 4, ' ')
-				<< it -> first << " - " << it -> second.Type() << " - " << level;
-			print_yaml(it -> second, level + 1);
-		}
-	} else if (node.IsSequence()) {
-		for (size_t i = 0; i < node.size(); ++i) {
-			JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << std::string(level * 4, ' ')
-				<< i << " - " << node[i].Type() << " - " << level;
-			print_yaml(node[i], level);
-		}
-	}
+////////////////////////////////////////////////////////////
+// 自定义配置
+class Person {
+public:
+    Person() {};
+    std::string m_name;
+    int m_age = 0;
+    bool m_sex = 0;
+    
+    std::string toString() const {
+        std::stringstream ss;
+        ss << "[Person name=" << m_name
+           << " age=" << m_age
+           << " sex=" << m_sex
+           <<"]";
+        return ss.str();
+    }
+
+    bool operator==(const Person &oth) const {
+        return m_name == oth.m_name && m_age == oth.m_age && m_sex == oth.m_sex;
+    }
+};
+
+// 实现自定义配置的YAML序列化与反序列化，这部分要放在jujimeizuo命名空间中
+namespace jujimeizuo {
+
+template<>
+class LexicalCast<std::string, Person> {
+public:
+    Person operator()(const std::string &v) {
+        YAML::Node node = YAML::Load(v);
+        Person p;
+        p.m_name = node["name"].as<std::string>();
+        p.m_age = node["age"].as<int>();
+        p.m_sex = node["sex"].as<bool>();
+        return p;
+    }
+};
+
+template<>
+class LexicalCast<Person, std::string> {
+public:
+    std::string operator()(const Person &p) {
+        YAML::Node node;
+        node["name"] = p.m_name;
+        node["age"] = p.m_age;
+        node["sex"] = p.m_sex;
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
+    }
+};
+
+} // end namespace jujimeizuo
+
+jujimeizuo::ConfigVar<Person>::ptr g_person = 
+    jujimeizuo::Config::Lookup("class.person", Person(), "system person");
+
+jujimeizuo::ConfigVar<std::map<std::string, Person>>::ptr g_person_map = 
+    jujimeizuo::Config::Lookup("class.map", std::map<std::string, Person>(), "system person map");
+
+jujimeizuo::ConfigVar<std::map<std::string, std::vector<Person>>>::ptr g_person_vec_map = 
+    jujimeizuo::Config::Lookup("class.vec_map", std::map<std::string, std::vector<Person>>(), "system vec map");
+
+void test_class() {
+    static uint64_t id = 0;
+
+    if(!g_person->getListener(id)) {
+        id = g_person->addListener([](const Person &old_value, const Person &new_value){
+            JUJIMEIZUO_LOG_INFO(g_logger) << "g_person value change, old value:" << old_value.toString()
+                << ", new value:" << new_value.toString();
+        });
+    }
+
+    JUJIMEIZUO_LOG_INFO(g_logger) << g_person->getValue().toString();
+
+    for (const auto &i : g_person_map->getValue()) {
+        JUJIMEIZUO_LOG_INFO(g_logger) << i.first << ":" << i.second.toString();
+    }
+
+    for(const auto &i : g_person_vec_map->getValue()) {
+        JUJIMEIZUO_LOG_INFO(g_logger) << i.first;
+        for(const auto &j : i.second) {
+            JUJIMEIZUO_LOG_INFO(g_logger) << j.toString();
+        }
+    }
 }
 
+////////////////////////////////////////////////////////////
 
-void test_yaml() {
-	YAML::Node root = YAML::LoadFile("/root/JUHPS/testlib/bin/conf/log.yml");
-	print_yaml(root, 0);
+template<class T>
+std::string formatArray(const T &v) {
+    std::stringstream ss;
+    ss << "[";
+    for(const auto &i:v) {
+        ss << " " << i;
+    }
+    ss << " ]";
+    return ss.str();
+}
 
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << root.Scalar();
+template<class T>
+std::string formatMap(const T &m) {
+    std::stringstream ss;
+    ss << "{";
+    for(const auto &i:m) {
+        ss << " {" << i.first << ":" << i.second << "}";
+    }
+    ss << " }";
+    return ss.str();
 }
 
 void test_config() {
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "before: " << g_int_value_config -> getValue();
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "before: " << g_float_value_config -> toString();
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_int value: " << g_int->getValue();
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_float value: " << g_float->getValue();
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_string value: " << g_string->getValue();
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_int_vec value: " << formatArray<std::vector<int>>(g_int_vec->getValue());
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_int_list value: " << formatArray<std::list<int>>(g_int_list->getValue());
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_int_set value: " << formatArray<std::set<int>>(g_int_set->getValue());
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_int_unordered_set value: " << formatArray<std::unordered_set<int>>(g_int_unordered_set->getValue());
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_int_map value: " << formatMap<std::map<std::string, int>>(g_map_string2int->getValue());
+    JUJIMEIZUO_LOG_INFO(g_logger) << "g_int_unordered_map value: " << formatMap<std::unordered_map<std::string, int>>(g_unordered_map_string2int->getValue());
 
-#define XX(g_var, name, prefix) \
-	{ \
-		auto& v = g_var -> getValue(); \
-		for (auto& i : v) { \
-			JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << #prefix " " #name ": " << i; \
-		} \
-		JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << #prefix " " #name " yaml: " << g_var -> toString(); \
-	}
-
-#define XX_M(g_var, name, prefix) \
-	{ \
-		auto& v = g_var -> getValue(); \
-		for (auto& i : v) { \
-			JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << #prefix " " #name ": {" \
-					<< i.first << " - " << i.second << "}"; \
-		} \
-		JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << #prefix " " #name " yaml: " << g_var -> toString(); \
-	}
-
-	XX(g_int_vec_value_config, int_vec, before);
-	XX(g_int_list_value_config, int_list, before);
-	XX(g_int_set_value_config, int_set, before);
-	XX(g_int_unordered_set_value_config, int_unordered_set, before);
-	XX_M(g_str_int_map_value_config, str_int_map, before);
-	XX_M(g_str_int_unordered_map_value_config, str_int_unordered_map, before);
-
-	YAML::Node root = YAML::LoadFile("/root/JUHPS/testlib/bin/conf/log.yml");
-    jujimeizuo::Config::LoadFromYaml(root);
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "after: " << g_int_value_config -> getValue();
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "after: " << g_float_value_config -> toString();
-
-	XX(g_int_vec_value_config, int_vec, after);
-	XX(g_int_list_value_config, int_list, after);
-	XX(g_int_set_value_config, int_set, after);
-	XX(g_int_unordered_set_value_config, int_unordered_set, after);
-	XX_M(g_str_int_map_value_config, str_int_map, after);
-	XX_M(g_str_int_unordered_map_value_config, str_int_unordered_map, after);
+    // 自定义配置项
+    test_class();
 }
 
-class Person {
-public:
-	Person() {}
-	std::string m_name;
-	int m_age = 0;
-	bool m_sex = 0;
-
-	std::string toString() const {
-		std::stringstream ss;
-		ss << "[Person name=" << m_name
-		   << " age=" << m_age
-		   << " sex=" << m_sex
-		   << "]";
-		return ss.str();
-	}
-
-	bool operator==(const Person& oth) const {
-		return m_name == oth.m_name
-			&& m_age == oth.m_age
-			&& m_sex == oth.m_sex;
-	}
-};
-
-namespace jujimeizuo {
-
-template <>
-class LexicalCast<std::string, Person> {
-public:
-	Person operator()(const std::string& v) {
-		YAML::Node node = YAML::Load(v);
-		Person p;
-		p.m_name = node["name"].as<std::string>();
-		p.m_age = node["age"].as<int>();
-		p.m_sex = node["sex"].as<bool>();
-		return p;
-	}
-};
-
-template <>
-class LexicalCast<Person, std::string> {
-public:
-	std::string operator()(const Person& p) {
-		YAML::Node node;
-		node["name"] = p.m_name;
-		node["age"] = p.m_age;
-		node["sex"] = p.m_sex;
-		std::stringstream ss;
-		ss << node;
-		return ss.str();
-	}
-};
-
-}
-
-jujimeizuo::ConfigVar<Person>::ptr g_person =
-	jujimeizuo::Config::Lookup("class.person", Person(), "class person");
-
-jujimeizuo::ConfigVar<std::map<std::string, Person> >::ptr g_person_map =
-	jujimeizuo::Config::Lookup("class.map", std::map<std::string, Person>(), "class person");
-
-jujimeizuo::ConfigVar<std::map<std::string, std::vector<Person> > >::ptr g_person_vec_map =
-	jujimeizuo::Config::Lookup("class.vec_map", std::map<std::string, std::vector<Person> >(), "class person");
-
-void test_class() {
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "before: " << g_person -> getValue().toString() << " - " << g_person -> toString();
-	
-#define XX_PM(g_var, prefix) \
-	{ \
-		auto m = g_var -> getValue(); \
-		for (auto& i : m) { \
-			JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << #prefix << ": " << i.first << " - " << i.second.toString(); \
-		} \
-		JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << #prefix << ": size=" << m.size(); \
-	}
-
-	g_person -> addListener([](const Person& old_value, const Person& new_value) {
-		JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "old_value=" << old_value.toString()
-				<< "new_value=" << new_value.toString();
-	});
-
-	XX_PM(g_person_map, "class.map before");
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "before: " << g_person_vec_map -> toString();
-
-	YAML::Node root = YAML::LoadFile("/root/JUHPS/testlib/bin/conf/log.yml");
-	jujimeizuo::Config::LoadFromYaml(root);
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "after: " << g_person -> getValue().toString() << " - " << g_person -> toString();
-	XX_PM(g_person_map, "class.map after");
-	JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "after: " << g_person_vec_map -> toString();
-}
-
-void test_log() {
-    static jujimeizuo::Logger::ptr system_log = JUJIMEIZUO_LOG_NAME("system");
-    JUJIMEIZUO_LOG_INFO(system_log) << "hello system" << std::endl;
-    std::cout << jujimeizuo::LoggerMgr::GetInstance() -> toYamlString() << std::endl;
-    YAML::Node root = YAML::LoadFile("/root/JUHPS/testlib/bin/conf/log.yml");
-    jujimeizuo::Config::LoadFromYaml(root);
-    std::cout << "====================================" << std::endl;
-    std::cout << jujimeizuo::LoggerMgr::GetInstance() -> toYamlString() << std::endl;
-    std::cout << "====================================" << std::endl;
-    std::cout << root << std::endl;
-    JUJIMEIZUO_LOG_INFO(system_log) << "hello system" << std::endl;
-    system_log -> setFormatter("%d - %m%n");
-    JUJIMEIZUO_LOG_INFO(system_log) << "hello system" << std::endl;
-}
-
-
-int main(int argc, char** argv) {
-	// test_yaml();
-	// test_config();
-	// test_class();
-    test_log();
-
-    jujimeizuo::Config::Visit([](jujimeizuo::ConfigVarBase::ptr var) {
-        JUJIMEIZUO_LOG_INFO(JUJIMEIZUO_LOG_ROOT()) << "name=" << var->getName()
-                    << " description=" << var->getDescription()
-                    << " typename=" << var->getTypename()
-                    << " value=" << var->toString();
+int main(int argc, char *argv[]) {
+    // 设置g_int的配置变更回调函数
+    g_int->addListener([](const int &old_value, const int &new_value) {
+        JUJIMEIZUO_LOG_INFO(g_logger) << "g_int value changed, old_value: " << old_value << ", new_value: " << new_value;
     });
+
+    JUJIMEIZUO_LOG_INFO(g_logger) << "before============================";
+
+    test_config();
+
+    // 从配置文件中加载配置，由于更新了配置，会触发配置项的配置变更回调函数
+    jujimeizuo::EnvMgr::GetInstance()->init(argc, argv);
+    jujimeizuo::Config::LoadFromConfDir("conf");
+    JUJIMEIZUO_LOG_INFO(g_logger) << "after============================";
+    
+    test_config();
+
+    // 遍历所有配置
+    jujimeizuo::Config::Visit([](jujimeizuo::ConfigVarBase::ptr var){
+        JUJIMEIZUO_LOG_INFO(g_logger) << "name=" << var->getName()
+            << " description=" << var->getDescription()
+            << " typename=" << var->getTypeName()
+            << " value=" << var->toString();
+    });
+
     return 0;
 }

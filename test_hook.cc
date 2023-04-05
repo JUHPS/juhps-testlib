@@ -1,26 +1,39 @@
-#include "../src/jujimeizuo.h"
+#include "src/jujimeizuo.h"
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd.h>
-#include <string.h>
+#include <fcntl.h>
 
-jujimeizuo::Logger::ptr g_logger = JUJIMEIZUO_LOG_ROOT();
+static jujimeizuo::Logger::ptr g_logger = JUJIMEIZUO_LOG_ROOT();
 
+/**
+ * @brief 测试sleep被hook之后的浆果
+ */
 void test_sleep() {
-    jujimeizuo::IOManager iom(1);
-    iom.schedule([](){
+    JUJIMEIZUO_LOG_INFO(g_logger) << "test_sleep begin";
+    jujimeizuo::IOManager iom;
+    
+    /**
+     * 这里的两个协程sleep是同时开始的，一共只会睡眠3秒钟，第一个协程开始sleep后，会yield到后台，
+     * 第二个协程会得到执行，最终两个协程都会yield到后台，并等待睡眠时间结束，相当于两个sleep是同一起点开始的
+     */
+    iom.schedule([] {
         sleep(2);
         JUJIMEIZUO_LOG_INFO(g_logger) << "sleep 2";
     });
 
-    iom.schedule([](){
+    iom.schedule([] {
         sleep(3);
         JUJIMEIZUO_LOG_INFO(g_logger) << "sleep 3";
     });
-    JUJIMEIZUO_LOG_INFO(g_logger) << "test_sleep";
+
+    JUJIMEIZUO_LOG_INFO(g_logger) << "test_sleep end";
 }
 
+/**
+ * 测试socket api hook
+ */
 void test_sock() {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -28,7 +41,7 @@ void test_sock() {
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(80);
-    inet_pton(AF_INET, "14.215.177.38", &addr.sin_addr.s_addr);
+    inet_pton(AF_INET, "36.152.44.96", &addr.sin_addr.s_addr);
 
     JUJIMEIZUO_LOG_INFO(g_logger) << "begin connect";
     int rt = connect(sock, (const sockaddr*)&addr, sizeof(addr));
@@ -60,8 +73,16 @@ void test_sock() {
     JUJIMEIZUO_LOG_INFO(g_logger) << buff;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    jujimeizuo::EnvMgr::GetInstance()->init(argc, argv);
+    jujimeizuo::Config::LoadFromConfDir(jujimeizuo::EnvMgr::GetInstance()->getConfigPath());
+
     // test_sleep();
+
+    // 只有以协程调度的方式运行hook才能生效
     jujimeizuo::IOManager iom;
     iom.schedule(test_sock);
+
+    JUJIMEIZUO_LOG_INFO(g_logger) << "main end";
+    return 0;
 }

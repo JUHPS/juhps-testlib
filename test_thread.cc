@@ -1,52 +1,40 @@
-#include "../server/src/jujimeizuo.h"
-#include <unistd.h>
+#include "src/jujimeizuo.h"
 
 jujimeizuo::Logger::ptr g_logger = JUJIMEIZUO_LOG_ROOT();
+
 int count = 0;
-// jujimeizuo::RWMutex s_mutex;
 jujimeizuo::Mutex s_mutex;
 
-void fun1() {
-    JUJIMEIZUO_LOG_INFO(g_logger) << "name: " << jujimeizuo::Thread::GetName()
-                                  << " this.name: " << jujimeizuo::Thread::GetThis() -> getName()
-                                  << " id: " << jujimeizuo::GetThreadId()
-                                  << " this.id: " << jujimeizuo::Thread::GetThis() -> getId();
-
-    for (int i = 0; i < 1000000; i++) {
-        // jujimeizuo::RWMutex::WriteLock lock(s_mutex);
+void func1(void *arg) {
+    JUJIMEIZUO_LOG_INFO(g_logger) << "name:" << jujimeizuo::Thread::GetName()
+        << " this.name:" << jujimeizuo::Thread::GetThis()->getName()
+        << " thread name:" << jujimeizuo::GetThreadName()
+        << " id:" << jujimeizuo::GetThreadId()
+        << " this.id:" << jujimeizuo::Thread::GetThis()->getId();
+    JUJIMEIZUO_LOG_INFO(g_logger) << "arg: " << *(int*)arg;
+    for(int i = 0; i < 10000; i++) {
         jujimeizuo::Mutex::Lock lock(s_mutex);
         ++count;
     }
 }
 
-void fun2() {
-    while (true) {
-        JUJIMEIZUO_LOG_INFO(g_logger) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    }
-}
+int main(int argc, char *argv[]) {
+    jujimeizuo::EnvMgr::GetInstance()->init(argc, argv);
+    jujimeizuo::Config::LoadFromConfDir(jujimeizuo::EnvMgr::GetInstance()->getConfigPath());
 
-void fun3() {
-    while (true) {
-        JUJIMEIZUO_LOG_INFO(g_logger) << "==================================";
-    }
-}
-
-int main(int argc, char** argv) {
-    JUJIMEIZUO_LOG_INFO(g_logger) << "thread test begin";
-    YAML::Node root = YAML::LoadFile("/root/WebServer/bin/conf/log2.yml");
-    jujimeizuo::Config::LoadFromYaml(root);
     std::vector<jujimeizuo::Thread::ptr> thrs;
-    for (int i = 0; i < 2; i++) {
-        jujimeizuo::Thread::ptr thr(new jujimeizuo::Thread(&fun2, "name_" + std::to_string(i * 2)));
-        jujimeizuo::Thread::ptr thr2(new jujimeizuo::Thread(&fun3, "name_" + std::to_string(i * 2 + 1)));
+    int arg = 123456;
+    for(int i = 0; i < 3; i++) {
+        // 带参数的线程用std::bind进行参数绑定
+        jujimeizuo::Thread::ptr thr(new jujimeizuo::Thread(std::bind(func1, &arg), "thread_" + std::to_string(i)));
         thrs.push_back(thr);
-        thrs.push_back(thr2);
     }
 
-    for (size_t i = 0; i < thrs.size(); i++) {
-        thrs[i] -> join();
+    for(int i = 0; i < 3; i++) {
+        thrs[i]->join();
     }
-    JUJIMEIZUO_LOG_INFO(g_logger) << "thread test end";
-    JUJIMEIZUO_LOG_INFO(g_logger) << "count=" << count;
+    
+    JUJIMEIZUO_LOG_INFO(g_logger) << "count = " << count;
     return 0;
 }
+
